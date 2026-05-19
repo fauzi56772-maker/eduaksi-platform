@@ -1,0 +1,45 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+  postgres-db:
+    image: postgres:16-alpine
+    container_name: eduaksi-postgres-prod
+    environment:
+      POSTGRES_USER: eduaksi_admin
+      POSTGRES_PASSWORD: SecretProductionPassword2026
+      POSTGRES_DB: eduaksi_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    restart: always
+
+  ai-service:
+    build:
+      context: .
+      dockerfile: Dockerfile.ai
+    container_name: eduaksi-ai-service
+    ports:
+      - "8000:8000"
+    environment:
+      - DATABASE_URL=postgresql://eduaksi_admin:SecretProductionPassword2026@postgres-db:5432/eduaksi_db?schema=public
+    depends_on:
+      - postgres-db
+    restart: always
+
+  web-frontend:
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    container_name: eduaksi-web-app
+    ports:
+      - "3000:3000"
+    environment:
+      - NEXT_PUBLIC_API_URL=http://localhost:8000
+    depends_on:
+      - ai-service
+    restart: always
+
+volumes:
+  postgres_data:
