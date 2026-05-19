@@ -1,0 +1,175 @@
+// packages/database/prisma/schema.prisma
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+enum UserRole {
+  SISWA
+  GURU
+  MAHASISWA
+  ADMIN
+}
+
+enum JenjangType {
+  SD
+  MI
+  SMP
+  MTS
+  SMA
+  MA
+  SMK
+  MAK
+  PERGURUAN_TINGGI
+}
+
+enum KurikulumType {
+  MERDEKA
+  K13
+}
+
+enum SemesterType {
+  GANJIL
+  GENAP
+}
+
+enum AuthProvider {
+  GOOGLE
+  FACEBOOK
+  APPLE
+  INSTAGRAM
+  TIKTOK
+  MICROSOFT
+}
+
+enum ContentOutputType {
+  SLIDE_PPT
+  MINDMAP
+  KUIS
+  FLASHCARD
+  RANGKUMAN
+  INFOGRAFIS
+  TABEL_DATA
+}
+
+enum AILogType {
+  OCR_SCAN
+  CHAT_TUTOR
+  CONTENT_GENERATE
+}
+
+enum QuestionType {
+  PILIHAN_GANDA
+  ESSAY
+  BENAR_SALAH
+}
+
+model User {
+  id             String          @id @default(cuid())
+  email          String?         @unique
+  fullName       String
+  role           UserRole        @default(SISWA)
+  createdAt      DateTime        @default(now())
+  oauthAccounts  OAuthAccount[]
+  profile        UserProfile?
+  studentProfile StudentProfile?
+  teacherProfile TeacherProfile?
+  aiLogs         AILog[]
+  contentOutputs ContentOutput[]
+}
+
+model OAuthAccount {
+  id             String       @id @default(cuid())
+  userId         String
+  provider       AuthProvider
+  providerUserId String
+  user           User         @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([provider, providerUserId])
+}
+
+model UserProfile {
+  id        String      @id @default(cuid())
+  userId    String      @unique
+  jenjang   JenjangType
+  kelas     Int
+  user      User        @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model StudentProfile {
+  id      String @id @default(cuid())
+  userId  String @unique
+  totalXP Int    @default(0)
+  level   Int    @default(1)
+  user    User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model TeacherProfile {
+  id           String @id @default(cuid())
+  userId       String @unique
+  schoolName   String?
+  aiTokenLimit Int    @default(-1)
+  user         User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model Mapel {
+  id          String        @id @default(cuid())
+  nama        String        
+  kurikulum   KurikulumType @default(MERDEKA)
+  jenjang     JenjangType
+  kelas       Int
+  kelasId     String        
+  isActive    Boolean       @default(true)
+  babTopiks   BabTopik[]
+  soals       Soal[]
+}
+
+model BabTopik {
+  id         String       @id @default(cuid())
+  mapelId    String
+  judul      String
+  urutanBab  Int
+  semester   SemesterType 
+  mapel      Mapel        @relation(fields: [mapelId], references: [id], onDelete: Cascade)
+  soals      Soal[]
+}
+
+model Soal {
+  id           String       @id @default(cuid())
+  mapelId      String
+  babTopikId   String?
+  tipeSoal     QuestionType @default(PILIHAN_GANDA)
+  pertanyaan   String       @db.Text
+  opsiJawaban  Json?        
+  jawabanBenar String       @db.Text
+  pembahasan   String?      @db.Text 
+  mapel        Mapel        @relation(fields: [mapelId], references: [id])
+  babTopik     BabTopik?    @relation(fields: [babTopikId], references: [id])
+  aiLogs       AILog[]
+}
+
+model ContentOutput {
+  id         String            @id @default(cuid())
+  userId     String
+  tipeKonten ContentOutputType
+  judul      String
+  dataKonten Json              
+  user       User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model AILog {
+  id            String    @id @default(cuid())
+  userId        String    
+  tipeLog       AILogType
+  promptUser    String    @db.Text
+  responseAI    String    @db.Text
+  mediaInputUrl String?   
+  soalId        String?
+  createdAt     DateTime  @default(now())
+  user          User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  soal          Soal?     @relation(fields: [soalId], references: [id])
+}
